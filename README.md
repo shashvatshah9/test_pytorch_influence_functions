@@ -7,7 +7,7 @@ A simple implementation of a paper [**Understanding Black-box Predictions via In
 
 # Usage
 install pytorch_influence_functions
-[https://github.com/ryokamoi/pytorch_influence_functions/tree/master](https://github.com/ryokamoi/pytorch_influence_functions/tree/master)
+[https://github.com/ryokamoi/pytorch_influence_functions](https://github.com/ryokamoi/pytorch_influence_functions)
 
 ```bash
 $ python demo.py

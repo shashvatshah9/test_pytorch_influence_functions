@@ -6,10 +6,16 @@ from utils import get_2class_mnist, visualize_result
 from model import LogisticRegression as LR
 
 
+import pytorch_influence_functions as ptif
+
 from pytorch_influence_functions.influence_functions.hvp_grad import (
     grad_z,
     s_test_sample,
 )
+from pytorch_influence_functions.influence_functions.influence_functions import (
+    calc_influence_single,
+)
+
 
 EPOCH = 10
 BATCH_SIZE = 100
@@ -27,10 +33,10 @@ if __name__ == '__main__':
     (x_train, y_train), (x_test, y_test) = get_2class_mnist(NUM_A, NUM_B)
     train_sample_num = len(x_train)
 
-    class TrainData(torch.utils.data.Dataset):
-        def __init__(self):
-            self.data = x_train
-            self.targets = y_train
+    class CreateData(torch.utils.data.Dataset):
+        def __init__(self, data, targets):
+            self.data = data
+            self.targets = targets
 
         def __len__(self):
             return len(self.data)
@@ -40,9 +46,9 @@ if __name__ == '__main__':
             out_label = self.targets[idx]
 
             return out_data, out_label
-
-    train_data = TrainData()
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=1, shuffle=True)
+    
+    train_data = CreateData(x_train, y_train)
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=1, shuffle=False)
 
     # prepare sklearn model to train w
     C = 1.0 / (train_sample_num * WEIGHT_DECAY)
@@ -66,6 +72,9 @@ if __name__ == '__main__':
     x_test_input = torch.FloatTensor(x_test[TEST_INDEX: TEST_INDEX+1])
     y_test_input = torch.LongTensor(y_test[TEST_INDEX: TEST_INDEX+1])
 
+    test_data = CreateData(x_test[TEST_INDEX: TEST_INDEX+1], y_test[TEST_INDEX: TEST_INDEX+1])
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=1, shuffle=True)
+
     if gpus >= 0:
         torch_model = torch_model.cuda()
         x_test_input = x_test_input.cuda()
@@ -76,31 +85,35 @@ if __name__ == '__main__':
     # # get test loss gradient
     # test_grad = torch.autograd.grad(test_loss_ori, torch_model.w)
 
-    # get inverse hvp (s_test)
-    print('Calculating s_test ...')
-    s_test = s_test_sample(
-            torch_model, x_test_input, y_test_input, train_loader, gpu=gpus, damp=0, scale=25, recursion_depth=RECURSION_DEPTH, r=R
-        )[0].detach().cpu().numpy()
-    # s_test = torch_model.sess.run(torch_model.inverse_hessian, feed_dict={torch_model.x: x_train, torch_model.y: y_train}) @ test_grad
+    # # get inverse hvp (s_test)
+    # print('Calculating s_test ...')
+    # s_test = s_test_sample(
+    #         torch_model, x_test_input, y_test_input, train_loader, gpu=gpus, damp=0, scale=25, recursion_depth=RECURSION_DEPTH, r=R
+    #     )[0].detach().cpu().numpy()
+    # # s_test = torch_model.sess.run(torch_model.inverse_hessian, feed_dict={torch_model.x: x_train, torch_model.y: y_train}) @ test_grad
 
-    print(s_test)
+    # print(s_test)
 
     # get train loss gradient and estimate loss diff
-    loss_diff_approx = np.zeros(train_sample_num)
-    for i in range(train_sample_num):
-        x_input = torch.FloatTensor(x_train[i])
-        y_input = torch.LongTensor(y_train[i])
+    # loss_diff_approx = np.zeros(train_sample_num)
+    # for i in range(train_sample_num):
+    #     x_input = torch.FloatTensor(x_train[i])
+    #     y_input = torch.LongTensor(y_train[i])
 
-        if gpus >= 0:
-            x_input = x_input.cuda()
-            y_input = y_input.cuda()
+    #     if gpus >= 0:
+    #         x_input = x_input.cuda()
+    #         y_input = y_input.cuda()
 
-        train_loss = torch_model.loss(torch_model(x_input), y_input)
-        train_grad = torch.autograd.grad(train_loss, torch_model.w)[0].detach().cpu().numpy()
+    #     train_loss = torch_model.loss(torch_model(x_input), y_input)
+    #     train_grad = torch.autograd.grad(train_loss, torch_model.w)[0].detach().cpu().numpy()
 
-        loss_diff_approx[i] = np.asscalar(train_grad.T @ s_test) / train_sample_num
-        if i % 100 == 0:
-            print('[{}/{}] Estimated loss diff: {}'.format(i+1, train_sample_num, loss_diff_approx[i]))
+    #     loss_diff_approx[i] = np.asscalar(train_grad.T @ s_test) / train_sample_num
+    #     if i % 100 == 0:
+    #         print('[{}/{}] Estimated loss diff: {}'.format(i+1, train_sample_num, loss_diff_approx[i]))
+
+    loss_diff_approx, _, _, _, = calc_influence_single(torch_model, train_loader, test_loader, test_id_num=0, gpu=1,
+                                recursion_depth=RECURSION_DEPTH, r=R, damp=0)
+    loss_diff_approx = - torch.FloatTensor(loss_diff_approx).cpu().numpy()
 
     # get high and low loss diff indice
     sorted_indice = np.argsort(loss_diff_approx)
