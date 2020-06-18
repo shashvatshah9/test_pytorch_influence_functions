@@ -1,5 +1,5 @@
-import tensorflow as tf
+import torch
 
 
 def log_clip(x):
-    return tf.log(tf.clip_by_value(x, 1e-10, x))
+    return torch.log(torch.clamp(x, 1e-10, None))

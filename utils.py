@@ -1,4 +1,4 @@
-from tensorflow.keras.datasets import mnist
+from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import mean_absolute_error, r2_score
@@ -13,7 +13,16 @@ def from10to2classes(x, y, num_a, num_b):
 
 
 def get_2class_mnist(num_a, num_b):
-    (x_train, y_train), (x_test, y_test) = mnist.load_data(path='mnist.npz')
+    train_data = datasets.MNIST('data', train=True, download=True, transform=transforms.Compose([
+                       transforms.ToTensor(),
+                   ]))
+    x_train, y_train = train_data.data, train_data.targets
+
+    test_data = datasets.MNIST('data', train=False, download=True, transform=transforms.Compose([
+                       transforms.ToTensor(),
+                   ]))
+    x_test, y_test = test_data.data, test_data.targets
+
     x_train, x_test = x_train.reshape([-1, 784]) / 255.0, x_test.reshape([-1, 784]) / 255.0
     x_train_2class, y_train_2class = from10to2classes(x_train, y_train, num_a, num_b)
     x_test_2class, y_test_2class = from10to2classes(x_test, y_test, num_a, num_b)
@@ -37,4 +46,4 @@ def visualize_result(actual_loss_diff, estimated_loss_diff):
     plt.xlim(min_, max_)
     plt.ylim(min_, max_)
 
-    plt.show()
+    plt.savefig("result.png")
