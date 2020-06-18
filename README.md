@@ -1,8 +1,6 @@
-# influence_function_with_lissa
-LiSSA Influence Function implementation by PyTorch
+Test code for pytorch_influence_functions
 
-# What is this?
-A simple implementation of a paper [**Understanding Black-box Predictions via Influence Functions**](https://arxiv.org/abs/1703.04730)
+# Results
 ![result_image](result.png)
 
 # Usage
