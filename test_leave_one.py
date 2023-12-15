@@ -11,14 +11,13 @@ from model import LogisticRegression as LR
 
 import pytorch_influence_functions as ptif
 
-from pytorch_influence_functions.influence_functions.hvp_grad import (
+from pytorch_influence_functions.influence_function import (
     grad_z,
-    s_test_sample,
+    s_test,
 )
-from pytorch_influence_functions.influence_functions.influence_functions import (
+from pytorch_influence_functions.calc_influence_function import (
     calc_influence_single,
 )
-
 
 EPOCH = 10
 BATCH_SIZE = 100
